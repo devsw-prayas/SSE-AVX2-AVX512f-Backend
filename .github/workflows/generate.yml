@@ -1,0 +1,50 @@
+name: Generate SIMD Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      namespace:
+        description: "Namespace to inject (e.g. StormSTL)"
+        required: true
+        type: string
+      forceinline:
+        description: "ForceInline macro name"
+        required: true
+        type: string
+      nodiscard:
+        description: "NoDiscard macro name"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create output directory
+        run: mkdir output
+
+      - name: Rewrite headers
+        run: |
+          for file in v128Intrin.h v256Intrin.h v512Intrin.h
+          do
+            sed \
+              -e "s/_vectorbackendnamespace/${{ github.event.inputs.namespace }}/g" \
+              -e "s/_vectorbackendforceinline/${{ github.event.inputs.forceinline }}/g" \
+              -e "s/_vectorbackendnodiscardmsg/${{ github.event.inputs.nodiscard }}/g" \
+              "$file" > "output/$file"
+          done
+
+      - name: Create ZIP
+        run: |
+          cd output
+          zip -r simd-${{ github.event.inputs.namespace }}.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: simd-${{ github.event.inputs.namespace }}
+          path: output/simd-${{ github.event.inputs.namespace }}.zip
